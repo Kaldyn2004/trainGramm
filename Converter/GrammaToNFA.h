@@ -63,7 +63,7 @@ public:
             for (size_t i = 0; i < rules.size(); ++i) {
                 std::cout << rules[i] << (i < rules.size() - 1 ? " | " : "");
             }
-            std::cout << "\n";
+            std::cout << std::endl;
         }
     }
 
@@ -133,6 +133,40 @@ private:
 
     void ProcessTransitions()
     {
+        grammarType == GrammarType::RIGHT_LINEAR
+        ? ProcessTransitionsRight()
+        : ProcessTransitionsLeft();
+    }
+
+    void  ProcessTransitionsLeft()
+    {
+        for (size_t i = 0; i < nonTerminals.size(); ++i) {
+            const auto& nonTerminal = nonTerminals[i];
+            const auto& rules = grammar[nonTerminal];
+
+            for (const auto& rule : rules) {
+                const auto& parts = splitString(rule);
+                std::string symbol = parts.back();  // Символ (терминал или ε)
+                std::string prevState = "";
+                if (parts.size() > 1)
+                {
+                    auto start = parts[0].find('<');
+                    auto end = parts[0].find('>');
+                    prevState = (parts.size() > 1 ? parts[0].substr(start + 1, end - start - 1): "");
+                }
+
+                size_t terminalIndex = findIndex(terminals, symbol);
+                size_t stateIndex = findIndex(nonTerminals, prevState);
+
+                if (terminalIndex < terminals.size() && stateIndex < states.size()) {
+                    addTransition(terminalIndex, stateIndex, "q" + std::to_string(i));
+                }
+            }
+        }
+    }
+
+    void  ProcessTransitionsRight()
+    {
         for (size_t i = 0; i < nonTerminals.size(); ++i)
         {
             const auto& nonTerminal = nonTerminals[i];
@@ -185,21 +219,18 @@ private:
             throw std::runtime_error("Failed to open file: " + outputFile);
         }
 
-        // Печать выходных символов
         for (const auto& state : states)
         {
             file << ((state == finalStates) ? ";F": ";");
         }
         file << std::endl;
 
-        // Печать состояний
         for (const auto& state : states)
         {
             file << ";" << state;
         }
         file << std::endl;
 
-        // Печать переходов
         for (size_t i = 0; i < terminals.size(); ++i)
         {
             file << terminals[i];
