@@ -48,12 +48,9 @@ public:
 
         std::string line;
         std::string currentRule;
-        std::string epsilon = "ε";
-        std::string MyEpsilon = "ε";
 
         while (std::getline(file, line))
         {
-            line = std::regex_replace(line, std::regex(epsilon), MyEpsilon);
             currentRule += line;
             if (endsWithPipe(currentRule))
             {
