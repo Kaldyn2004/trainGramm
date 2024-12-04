@@ -96,7 +96,7 @@ private:
     std::vector<std::vector<std::string>> m_transitions;
     const std::regex leftLinearRegex = std::regex(R"(^\s*<(\w+)>\s*->\s*((?:<\w+>\s+)?(?:[\w]|ε)(?:\s*\|\s*(?:<\w+>\s+)?(?:[\w]|ε))*)\s*$)");
     const std::regex rightLinearRegex = std::regex(R"(^\s*<(\w+)>\s*->\s*((?:[\w]|ε)(?:\s+<\w+>)?(?:\s*\|\s*(?:[\w]|ε)(?:\s+<\w+>)?)*)\s*$)");
-    const std::regex transitionRegex = std::regex(R"(^\s*(?:<(\w+)>)?\s*([\w]|ε)?\s*(?:<(\w+)>)?$)");
+    const std::regex transitionRegex = std::regex(R"(^\s*(?:<(\w+)>)?\s*([\w]|ε)?\s*(?:<(\w+)>)?\s*$)");
 
     void GetMooreFromLeftGramm()
     {
@@ -130,6 +130,10 @@ private:
                     {
                         AddTransition(nonTerminal, match[2], match[3]);
                     }
+                    else
+                    {
+                        std::cout << rule;
+                    }
                 }
             } else {
                 std::cout << "No rules found for " << nonTerminal << "\n";
@@ -160,7 +164,6 @@ private:
             m_transitions[i].resize(j + 1);
         }
         m_transitions[i][j] = nState;
-        std::cout << i << " " << j << " " << nState;
     }
 
     void PrintMoore(const std::string& fileName)
@@ -223,8 +226,8 @@ private:
                     }
                 }
             }
-            std::cout << option << "test123123131" << std::endl;
             grammar[nonTerminal].push_back(option);
+
         }
     }
 
