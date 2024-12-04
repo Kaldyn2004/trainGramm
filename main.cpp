@@ -16,7 +16,6 @@ int main(int argc, char* argv[]) {
     {
         GrammarToNFA converter;
         converter.readGrammarFromFile(inputFile);
-        converter.printGrammarAndSets();
         converter.convertToNFA(outputFile);
     } catch (const std::exception& ex)
     {
