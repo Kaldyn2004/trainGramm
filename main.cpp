@@ -15,9 +15,10 @@ int main(int argc, char* argv[]) {
     try
     {
         GrammarToNFA converter;
-        converter.readGrammarFromFile(inputFile);
+        converter.readGrammar(inputFile);
         converter.convertToNFA(outputFile);
-    } catch (const std::exception& ex)
+    }
+    catch (const std::exception& ex)
     {
         std::cerr << "Error: " << ex.what() << std::endl;
         return 1;

@@ -1,6 +1,15 @@
-#ifndef TRAINGRAMM_GRAMMATONFA_H
-#define TRAINGRAMM_GRAMMATONFA_H
-#include "../stdafx.h"
+#ifndef GRAMMAR_TO_NFA_H
+#define GRAMMAR_TO_NFA_H
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <map>
+#include <vector>
+#include <string>
+#include <regex>
+#include <algorithm>
+#include <iterator>
 
 enum class GrammarType {
     LEFT_LINEAR,
@@ -10,247 +19,171 @@ enum class GrammarType {
 
 class GrammarToNFA {
 public:
-    void printGrammarAndSets()
-    {
-        std::cout << "Gramm:\n";
-        for (const auto& [nonTerminal, rules] : grammar) {
-            std::cout << "<" << nonTerminal << "> -> ";
-            for (size_t i = 0; i < rules.size(); ++i) {
-                for (const auto& symbol : rules[i]) {
-                    std::cout << symbol << " ";
-                }
-                if (i < rules.size() - 1) {
-                    std::cout << "| ";
-                }
-            }
-            std::cout << "\n";
-        }
-
-        std::cout << "\nNot terminal:\n";
-        for (const auto& nt : nonTerminals) {
-            std::cout << "<" << nt << ">\n";
-        }
-
-        std::cout << "\nterminals:\n";
-        for (const auto& t : terminals) {
-            std::cout << t << "\n";
-        }
-
-        std::cout << (grammarType == GrammarType::LEFT_LINEAR);
-    }
-
-    void readGrammarFromFile(const std::string& filename)
-    {
-        std::ifstream file(filename, std::ios::in);
+    void readGrammar(const std::string& filename) {
+        std::ifstream file(filename);
         if (!file.is_open()) {
-            throw std::runtime_error("Error to open file: " + filename);
+            throw std::runtime_error("Failed to open file: " + filename);
         }
 
         std::string line;
-        std::string currentRule;
-
-        while (std::getline(file, line))
-        {
-            currentRule += line;
-            if (endsWithPipe(currentRule))
-            {
-                currentRule += " ";
-                continue;
-            }
-            else
-            {
-                ProcessRule(currentRule);
-                currentRule = "";
-            }
+        while (std::getline(file, line)) {
+            processLine(line);
         }
 
-        file.close();
-        if (grammarType == GrammarType::UNKNOWN)
-        {
-            throw std::runtime_error("Could not determine grammar type.");
+        if (grammarType == GrammarType::UNKNOWN) {
+            throw std::runtime_error("Could not determine grammar type from rules.");
         }
     }
 
-    void convertToNFA(const std::string& outputFile)
-    {
-        grammarType == GrammarType::LEFT_LINEAR
-        ? GetMooreFromLeftGramm()
-        : GetMooreFromRightGramm();
+    void convertToNFA(const std::string& outputFile) {
+        prepareStates();
+        processTransitions();
+        saveNFA(outputFile);
+    }
 
-        PrintMoore(outputFile);
+    void printGrammar() const {
+        std::cout << "Grammar:\n";
+        for (const auto& [nonTerminal, rules] : grammar) {
+            std::cout << "<" << nonTerminal << "> -> ";
+            for (size_t i = 0; i < rules.size(); ++i) {
+                std::cout << rules[i] << (i < rules.size() - 1 ? " | " : "");
+            }
+            std::cout << "\n";
+        }
     }
 
 private:
     GrammarType grammarType = GrammarType::UNKNOWN;
     std::map<std::string, std::vector<std::string>> grammar;
     std::vector<std::string> nonTerminals;
-    std::string firstNonTerminal;
     std::vector<std::string> terminals;
-    std::map<std::string, std::string> stateMap;
-    std::vector<std::string> m_states;
-    std::vector<std::string> m_outputSymbols;
-    std::vector<std::string> m_inputSymbols;
-    std::vector<std::vector<std::string>> m_transitions;
+    std::vector<std::string> states;
+    std::string finalStates;
+    std::vector<std::vector<std::string>> transitions;
+
     const std::regex leftLinearRegex = std::regex(R"(^\s*<(\w+)>\s*->\s*((?:<\w+>\s+)?(?:[\w]|ε)(?:\s*\|\s*(?:<\w+>\s+)?(?:[\w]|ε))*)\s*$)");
     const std::regex rightLinearRegex = std::regex(R"(^\s*<(\w+)>\s*->\s*((?:[\w]|ε)(?:\s+<\w+>)?(?:\s*\|\s*(?:[\w]|ε)(?:\s+<\w+>)?)*)\s*$)");
-    const std::regex transitionRegex = std::regex(R"(^\s*(?:<(\w+)>)?\s*([\w]|ε)?\s*(?:<(\w+)>)?\s*$)");
 
-    void GetMooreFromLeftGramm()
-    {
-
-
+    void processLine(const std::string& line) {
+        std::smatch match;
+        if (std::regex_match(line, match, leftLinearRegex)) {
+            if (grammarType == GrammarType::UNKNOWN) grammarType = GrammarType::LEFT_LINEAR;
+            parseRule(match[1], match[2]);
+        } else if (std::regex_match(line, match, rightLinearRegex)) {
+            if (grammarType == GrammarType::UNKNOWN) grammarType = GrammarType::RIGHT_LINEAR;
+            parseRule(match[1], match[2]);
+        } else {
+            throw std::runtime_error("Invalid rule format: " + line);
+        }
     }
 
-    void GetMooreFromRightGramm()
-    {
-        m_states.clear();
-        m_outputSymbols.clear();
-        m_transitions.clear();
-        std::vector<std::vector<std::string>> transitions(terminals.size(), std::vector<std::string>(nonTerminals.size() + 1, ""));
-        m_transitions = transitions;
-        for (size_t i = 0; i < nonTerminals.size(); ++i) {
-            m_states.push_back("q" + std::to_string(i));
-            m_outputSymbols.emplace_back("");
+    void parseRule(const std::string& nonTerminal, const std::string& rules) {
+        if (std::find(nonTerminals.begin(), nonTerminals.end(), nonTerminal) == nonTerminals.end()) {
+            nonTerminals.push_back(nonTerminal);
         }
-        m_states.push_back("q" + std::to_string(nonTerminals.size()));
-        m_outputSymbols.emplace_back("F");
 
-        for (const auto& nonTerminal : nonTerminals) {
+        std::istringstream ruleStream(rules);
+        std::string option;
+        while (std::getline(ruleStream, option, '|')) {
+            grammar[nonTerminal].push_back(option);
 
-            // Поиск значения в карте grammar
-            auto it = grammar.find(nonTerminal);
-            if (it != grammar.end()) {
-                std::smatch match;
-                for (const auto& rule : it->second) {
-                    if (std::regex_match(rule, match, transitionRegex))
-                    {
-                        AddTransition(nonTerminal, match[2], match[3]);
-                    }
+            for (const auto& symbol : splitString(option)) {
+                if (!symbol.empty() && !isNonTerminal(symbol) && std::find(terminals.begin(), terminals.end(), symbol) == terminals.end()) {
+                    terminals.push_back(symbol);
                 }
-            } else {
-                std::cout << "No rules found for " << nonTerminal << "\n";
             }
         }
     }
 
-    void AddTransition(const std::string& state, const std::string& symbol, const std::string& nextState)
-    {
-        auto j = std::distance(nonTerminals.begin(), std::find(nonTerminals.begin(), nonTerminals.end(), state));
-        auto i = std::distance(terminals.begin(), std::find(terminals.begin(), terminals.end(), symbol));
-        std::string nState;
-        if (nextState.empty())
+    void prepareStates() {
+        states.clear();
+        transitions.assign(terminals.size(), std::vector<std::string>(nonTerminals.size() + 1, ""));
+        for (size_t i = 0; i <= nonTerminals.size(); ++i) {
+            states.push_back("q" + std::to_string(i));
+        }
+        (grammarType == GrammarType::RIGHT_LINEAR)
+            ? finalStates = "q" + std::to_string(nonTerminals.size())
+            : finalStates = "q0";
+    }
+
+    void processTransitions() {
+        for(const auto& n: nonTerminals)
         {
-            nState = "q" + std::to_string(nonTerminals.size());
+            std::cout << n << std::endl;
         }
-        else
-        {
-            nState = "q" + std::to_string(std::distance(nonTerminals.begin(), std::find(nonTerminals.begin(), nonTerminals.end(), nextState)));
-        }
-        if (i >= m_transitions.size()) {
-            m_transitions.resize(i + 1);
-        }
+        for (size_t i = 0; i < nonTerminals.size(); ++i) {
+            const auto& nonTerminal = nonTerminals[i];
+            const auto& rules = grammar[nonTerminal];
+
+            for (const auto& rule : rules) {
+                const auto& parts = splitString(rule);
+                std::string symbol = parts[0];
+                std::string nextState = (parts.size() > 1 ? parts[1] : "");
 
 
-        if (j >= m_transitions[i].size()) {
-            m_transitions[i].resize(j + 1);
-        }
-        if (m_transitions[i][j].empty())
-        {
-            m_transitions[i][j] = nState;
-        }
-        else
-        {
-            m_transitions[i][j] += "," + nState;
+                size_t terminalIndex = findIndex(terminals, symbol);
+                size_t stateIndex = findIndex(nonTerminals, nextState);
+
+                if (terminalIndex < terminals.size() && stateIndex < states.size()) {
+                    addTransition(terminalIndex, i, "q" + std::to_string(stateIndex));
+                } else if (terminalIndex < terminals.size()) {
+                    addTransition(terminalIndex, i, "q" + std::to_string(nonTerminals.size()));
+                }
+            }
         }
     }
 
-    void PrintMoore(const std::string& fileName)
-    {
-        std::ofstream file(fileName);
-        if (!file.is_open())
-        {
-            std::cerr << "Error: Unable to write to file " << fileName << std::endl;
-            exit(1);
+    void addTransition(size_t terminalIndex, size_t stateIndex, const std::string& targetState) {
+        if (transitions[terminalIndex][stateIndex].empty()) {
+            transitions[terminalIndex][stateIndex] = targetState;
+        } else {
+            transitions[terminalIndex][stateIndex] += "," + targetState;
+        }
+    }
+
+    void saveNFA(const std::string& outputFile) const {
+        std::ofstream file(outputFile);
+        if (!file.is_open()) {
+            throw std::runtime_error("Failed to open file: " + outputFile);
         }
 
-        for (const std::string &outputSymbol : m_outputSymbols)
-        {
-            file<< ";" << outputSymbol;
+        // Печать выходных символов
+        for (const auto& state : states) {
+            file << ((state == finalStates) ? ";F": ";");
         }
         file << std::endl;
 
-        for (const std::string &state : m_states)
-        {
+        // Печать состояний
+        for (const auto& state : states) {
             file << ";" << state;
         }
         file << std::endl;
 
-        for (size_t i = 0; i < terminals.size(); ++i)
-        {
+        // Печать переходов
+        for (size_t i = 0; i < terminals.size(); ++i) {
             file << terminals[i];
-            for (const auto &transition : m_transitions[i]) {
-                file << ";" << transition;
+            for (const auto& transition : transitions[i]) {
+                file << ";" << (transition.empty() ? "" : transition);
             }
-            file << std::endl;
+            file << std::endl;;
         }
 
         file.close();
     }
 
-    void parseRule(const std::string& nonTerminal, const std::string& rules)
-    {
-        std::stringstream ruleStream(rules);
-        std::string option;
-        nonTerminals.push_back(nonTerminal);
-        if (firstNonTerminal.empty())
-        {
-            firstNonTerminal = nonTerminal;
-        }
-
-        while (std::getline(ruleStream, option, '|'))
-        {
-            std::stringstream optionStream(option);
-            std::vector<std::string> production;
-            std::string symbol;
-
-            while (optionStream >> symbol)
-            {
-                production.push_back(symbol);
-                if (symbol[0] != '<')
-                {
-                    if (std::find(terminals.begin(), terminals.end(), symbol) == terminals.end())
-                    {
-                        terminals.push_back(symbol);
-                    }
-                }
-            }
-            grammar[nonTerminal].push_back(option);
-
-        }
+    static bool isNonTerminal(const std::string& symbol) {
+        return !symbol.empty() && symbol.front() == '<' && symbol.back() == '>';
     }
 
-    static bool endsWithPipe(const std::string& line) {
-        auto it = std::find_if(line.rbegin(), line.rend(), [](unsigned char ch) {
-            return !std::isspace(ch);
-        });
-
-        return (it != line.rend() && *it == '|');
+    static std::vector<std::string> splitString(const std::string& str) {
+        std::istringstream stream(str);
+        return {std::istream_iterator<std::string>{stream}, std::istream_iterator<std::string>{}};
     }
 
-    void ProcessRule(const std::string& rule) {
-        std::smatch match;
-        if (std::regex_match(rule, match, leftLinearRegex)) {
-            if (grammarType == GrammarType::UNKNOWN) grammarType = GrammarType::LEFT_LINEAR;
-
-            parseRule(match[1], match[2]);
-        } else if (std::regex_match(rule, match, rightLinearRegex)) {
-            if (grammarType == GrammarType::UNKNOWN) grammarType = GrammarType::RIGHT_LINEAR;
-
-            parseRule(match[1], match[2]);
-        } else {
-            throw std::runtime_error("Invalid string format: " + rule);
-        }
+    static size_t findIndex(const std::vector<std::string>& vec, const std::string& value) {
+        auto it = std::find(vec.begin(), vec.end(), value);
+        return it != vec.end() ? std::distance(vec.begin(), it) : vec.size();
     }
 };
 
-#endif //TRAINGRAMM_GRAMMATONFA_H
+#endif // GRAMMAR_TO_NFA_H
