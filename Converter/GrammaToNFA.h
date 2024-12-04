@@ -15,7 +15,8 @@ enum class GrammarType
 {
     LEFT_LINEAR,
     RIGHT_LINEAR,
-    UNKNOWN
+    UNKNOWN,
+    DUAL_LINEAR,
 };
 
 class GrammarToNFA
@@ -87,7 +88,17 @@ private:
         std::smatch match;
         if (std::regex_match(line, match, rightLinearRegex))
         {
-            if (grammarType == GrammarType::UNKNOWN) grammarType = GrammarType::RIGHT_LINEAR;
+            if (grammarType == GrammarType::UNKNOWN || grammarType == GrammarType::DUAL_LINEAR)
+            {
+                if (std::regex_match(line, match, leftLinearRegex))
+                {
+                    grammarType = GrammarType::DUAL_LINEAR;
+                }
+                else
+                {
+                    grammarType = GrammarType::RIGHT_LINEAR;
+                }
+            }
             parseRule(match[1], match[2]);
         }
         else
