@@ -41,6 +41,8 @@ public:
             }
         }
 
+        std::cout << (grammarType == GrammarType::RIGHT_LINEAR);
+
         if (grammarType == GrammarType::UNKNOWN)
         {
             throw std::runtime_error("Could not determine grammar type from rules.");
@@ -83,15 +85,19 @@ private:
     void processLine(const std::string& line)
     {
         std::smatch match;
+        if (std::regex_match(line, match, rightLinearRegex))
+        {
+            if (grammarType == GrammarType::UNKNOWN) grammarType = GrammarType::RIGHT_LINEAR;
+            parseRule(match[1], match[2]);
+        }
+        else
         if (std::regex_match(line, match, leftLinearRegex))
         {
             if (grammarType == GrammarType::UNKNOWN) grammarType = GrammarType::LEFT_LINEAR;
             parseRule(match[1], match[2]);
-        } else if (std::regex_match(line, match, rightLinearRegex))
+        }
+        else
         {
-            if (grammarType == GrammarType::UNKNOWN) grammarType = GrammarType::RIGHT_LINEAR;
-            parseRule(match[1], match[2]);
-        } else {
             throw std::runtime_error("Invalid rule format: " + line);
         }
     }
