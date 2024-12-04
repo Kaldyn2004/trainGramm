@@ -118,12 +118,12 @@ private:
         m_states.push_back("q" + std::to_string(nonTerminals.size()));
         m_outputSymbols.emplace_back("F");
 
+        std::cout << "Rules:\n";
         for (const auto& nonTerminal : nonTerminals) {
 
             // Поиск значения в карте grammar
             auto it = grammar.find(nonTerminal);
             if (it != grammar.end()) {
-                std::cout << "Rules:\n";
                 std::smatch match;
                 for (const auto& rule : it->second) {
                     if (std::regex_match(rule, match, transitionRegex))
@@ -163,7 +163,14 @@ private:
         if (j >= m_transitions[i].size()) {
             m_transitions[i].resize(j + 1);
         }
-        m_transitions[i][j] = nState;
+        if (m_transitions[i][j].empty())
+        {
+            m_transitions[i][j] = nState;
+        }
+        else
+        {
+            m_transitions[i][j] += "," + nState;
+        }
     }
 
     void PrintMoore(const std::string& fileName)
