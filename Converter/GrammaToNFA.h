@@ -49,8 +49,8 @@ public:
 
     void convertToNFA(const std::string& outputFile)
     {
-        prepareStates();
-        processTransitions();
+        PrepareStates();
+        ProcessTransitions();
         saveNFA(outputFile);
     }
 
@@ -118,7 +118,7 @@ private:
         }
     }
 
-    void prepareStates()
+    void PrepareStates()
     {
         states.clear();
         transitions.assign(terminals.size(), std::vector<std::string>(nonTerminals.size() + 1, ""));
@@ -131,7 +131,7 @@ private:
             : finalStates = "q0";
     }
 
-    void processTransitions()
+    void ProcessTransitions()
     {
         for (size_t i = 0; i < nonTerminals.size(); ++i)
         {
@@ -142,11 +142,17 @@ private:
             {
                 const auto& parts = splitString(rule);
                 std::string symbol = parts[0];
-                std::string nextState = (parts.size() > 1 ? parts[1] : "");
+                std::string nextState;
+                if (parts.size() > 1)
+                {
+                    auto start = parts[1].find('<');
+                    auto end = parts[1].find('>');
+                    nextState = (parts.size() > 1 ? parts[1].substr(start + 1, end - start - 1): "");
+                }
 
                 size_t terminalIndex = findIndex(terminals, symbol);
                 size_t stateIndex = findIndex(nonTerminals, nextState);
-
+                std::cout << symbol << std::endl << nextState << "<" << std::endl;
                 if (terminalIndex < terminals.size() && stateIndex < states.size())
                 {
                     addTransition(terminalIndex, i, "q" + std::to_string(stateIndex));
