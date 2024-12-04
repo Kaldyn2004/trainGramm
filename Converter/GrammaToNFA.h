@@ -49,8 +49,7 @@ public:
         std::string line;
         std::string currentRule;
         std::string epsilon = "ε";
-        std::string MyEpsilon = "`";
-
+        std::string MyEpsilon = "ε";
 
         while (std::getline(file, line))
         {
@@ -86,7 +85,7 @@ public:
 
 private:
     GrammarType grammarType = GrammarType::UNKNOWN;
-    std::map<std::string, std::vector<std::vector<std::string>>> grammar;
+    std::map<std::string, std::vector<std::string>> grammar;
     std::vector<std::string> nonTerminals;
     std::string firstNonTerminal;
     std::vector<std::string> terminals;
@@ -95,32 +94,73 @@ private:
     std::vector<std::string> m_outputSymbols;
     std::vector<std::string> m_inputSymbols;
     std::vector<std::vector<std::string>> m_transitions;
-    const std::regex leftLinearRegex = std::regex(R"(^\s*<(\w+)>\s*->\s*((?:<\w+>\s+)?[\w`](?:\s*\|\s*(?:<\w+>\s+)?[\w`])*)\s*$)");
-    const std::regex rightLinearRegex = std::regex(R"(^\s*<(\w+)>\s*->\s*([\w`](?:\s+<\w+>)?(?:\s*\|\s*[\w`](?:\s+<\w+>)?)*)\s*$)");
+    const std::regex leftLinearRegex = std::regex(R"(^\s*<(\w+)>\s*->\s*((?:<\w+>\s+)?(?:[\w]|ε)(?:\s*\|\s*(?:<\w+>\s+)?(?:[\w]|ε))*)\s*$)");
+    const std::regex rightLinearRegex = std::regex(R"(^\s*<(\w+)>\s*->\s*((?:[\w]|ε)(?:\s+<\w+>)?(?:\s*\|\s*(?:[\w]|ε)(?:\s+<\w+>)?)*)\s*$)");
+    const std::regex transitionRegex = std::regex(R"(^\s*(?:<(\w+)>)?\s*([\w]|ε)?\s*(?:<(\w+)>)?$)");
 
     void GetMooreFromLeftGramm()
     {
-        size_t size = nonTerminals.size();
-        m_states[0] = "q0";
-        for (size_t i = 0; i < nonTerminals.size(); ++i) {
-            m_states[i + 1] = "q" + std::to_string(i + 1);
-            m_outputSymbols[i] = nonTerminals[i] == firstNonTerminal ? "F" : "";
-        }
+
 
     }
 
     void GetMooreFromRightGramm()
     {
+        m_states.clear();
+        m_outputSymbols.clear();
+        m_transitions.clear();
+        std::vector<std::vector<std::string>> transitions(terminals.size(), std::vector<std::string>(nonTerminals.size() + 1, ""));
+        m_transitions = transitions;
         for (size_t i = 0; i < nonTerminals.size(); ++i) {
-            m_states[i] = "q" + std::to_string(i);
-            m_outputSymbols[i] = "";
+            m_states.push_back("q" + std::to_string(i));
+            m_outputSymbols.emplace_back("");
         }
-        m_states[nonTerminals.size() + 1] = "q" + std::to_string(nonTerminals.size() + 1);
-        m_outputSymbols[nonTerminals.size() + 1] = "F";
+        m_states.push_back("q" + std::to_string(nonTerminals.size()));
+        m_outputSymbols.emplace_back("F");
+
+        for (const auto& nonTerminal : nonTerminals) {
+
+            // Поиск значения в карте grammar
+            auto it = grammar.find(nonTerminal);
+            if (it != grammar.end()) {
+                std::cout << "Rules:\n";
+                std::smatch match;
+                for (const auto& rule : it->second) {
+                    if (std::regex_match(rule, match, transitionRegex))
+                    {
+                        AddTransition(nonTerminal, match[2], match[3]);
+                    }
+                }
+            } else {
+                std::cout << "No rules found for " << nonTerminal << "\n";
+            }
+            std::cout << "\n";
+        }
+    }
+
+    void AddTransition(const std::string& state, const std::string& symbol, const std::string& nextState)
+    {
+        auto j = std::distance(nonTerminals.begin(), std::find(nonTerminals.begin(), nonTerminals.end(), state));
+        auto i = std::distance(terminals.begin(), std::find(terminals.begin(), terminals.end(), symbol));
+        std::string nState;
+        if (nextState.empty())
+        {
+            nState = "q" + std::to_string(nonTerminals.size());
+        }
+        else
+        {
+            nState = "q" + std::to_string(std::distance(nonTerminals.begin(), std::find(nonTerminals.begin(), nonTerminals.end(), nextState)));
+        }
+        if (i >= m_transitions.size()) {
+            m_transitions.resize(i + 1);
+        }
 
 
-
-
+        if (j >= m_transitions[i].size()) {
+            m_transitions[i].resize(j + 1);
+        }
+        m_transitions[i][j] = nState;
+        std::cout << i << " " << j << " " << nState;
     }
 
     void PrintMoore(const std::string& fileName)
@@ -144,9 +184,9 @@ private:
         }
         file << std::endl;
 
-        for (size_t i = 0; i < m_inputSymbols.size(); ++i)
+        for (size_t i = 0; i < terminals.size(); ++i)
         {
-            file << m_inputSymbols[i];
+            file << terminals[i];
             for (const auto &transition : m_transitions[i]) {
                 file << ";" << transition;
             }
@@ -175,9 +215,7 @@ private:
             while (optionStream >> symbol)
             {
                 production.push_back(symbol);
-                if (symbol[0] == '<')
-                {
-                } else if (symbol != "`")
+                if (symbol[0] != '<')
                 {
                     if (std::find(terminals.begin(), terminals.end(), symbol) == terminals.end())
                     {
@@ -185,8 +223,8 @@ private:
                     }
                 }
             }
-
-            grammar[nonTerminal].push_back(production);
+            std::cout << option << "test123123131" << std::endl;
+            grammar[nonTerminal].push_back(option);
         }
     }
 
