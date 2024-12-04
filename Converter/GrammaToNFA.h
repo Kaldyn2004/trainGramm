@@ -60,7 +60,8 @@ public:
         for (const auto& [nonTerminal, rules] : grammar)
         {
             std::cout << "<" << nonTerminal << "> -> ";
-            for (size_t i = 0; i < rules.size(); ++i) {
+            for (size_t i = 0; i < rules.size(); ++i)
+            {
                 std::cout << rules[i] << (i < rules.size() - 1 ? " | " : "");
             }
             std::cout << std::endl;
@@ -140,13 +141,15 @@ private:
 
     void  ProcessTransitionsLeft()
     {
-        for (size_t i = 0; i < nonTerminals.size(); ++i) {
+        for (size_t i = 0; i < nonTerminals.size(); ++i)
+        {
             const auto& nonTerminal = nonTerminals[i];
             const auto& rules = grammar[nonTerminal];
 
-            for (const auto& rule : rules) {
+            for (const auto& rule : rules)
+            {
                 const auto& parts = splitString(rule);
-                std::string symbol = parts.back();  // Символ (терминал или ε)
+                std::string symbol = parts.back();
                 std::string prevState = "";
                 if (parts.size() > 1)
                 {
@@ -158,7 +161,8 @@ private:
                 size_t terminalIndex = findIndex(terminals, symbol);
                 size_t stateIndex = findIndex(nonTerminals, prevState);
 
-                if (terminalIndex < terminals.size() && stateIndex < states.size()) {
+                if (terminalIndex < terminals.size() && stateIndex < states.size())
+                {
                     addTransition(terminalIndex, stateIndex, "q" + std::to_string(i));
                 }
             }
