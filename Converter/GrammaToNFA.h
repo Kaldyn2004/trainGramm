@@ -240,7 +240,7 @@ private:
     {
         for (auto it = states.rbegin(); it != states.rend(); ++it)
         {
-            file << ((*it == "q1") ? ";F" : ";");
+            file << ((*it == finalStates) ? ";F" : ";");
         }
         file << std::endl;
 
