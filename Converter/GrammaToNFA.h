@@ -175,7 +175,7 @@ private:
         }
     }
 
-    void  ProcessTransitionsRight()
+    void ProcessTransitionsRight()
     {
         for (size_t i = 0; i < nonTerminals.size(); ++i)
         {
@@ -229,6 +229,41 @@ private:
             throw std::runtime_error("Failed to open file: " + outputFile);
         }
 
+        grammarType == GrammarType::RIGHT_LINEAR
+        ?  WriteRightNFA(file)
+        : WriteLeftNFA(file);
+
+        file.close();
+    }
+
+    void WriteLeftNFA(std::ofstream& file) const
+    {
+        for (auto it = states.rbegin(); it != states.rend(); ++it)
+        {
+            file << ((*it == "q1") ? ";F" : ";");
+        }
+        file << std::endl;
+
+        for (auto it = states.rbegin(); it != states.rend(); ++it)
+        {
+            file << ";" << *it;
+        }
+        file << std::endl;
+
+        for (size_t i = 0; i < terminals.size(); ++i)
+        {
+            file << terminals[i];
+            for (auto it = transitions[i].rbegin(); it != transitions[i].rend(); ++it)
+            {
+                file << ";" << (it->empty() ? "" : *it);
+            }
+            file << std::endl;
+        }
+    }
+
+    void WriteRightNFA(std::ofstream& file) const
+    {
+
         for (const auto& state : states)
         {
             file << ((state == finalStates) ? ";F": ";");
@@ -250,8 +285,6 @@ private:
             }
             file << std::endl;;
         }
-
-        file.close();
     }
 
     static bool isNonTerminal(const std::string& symbol)
