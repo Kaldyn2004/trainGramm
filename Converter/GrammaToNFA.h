@@ -11,39 +11,54 @@
 #include <algorithm>
 #include <iterator>
 
-enum class GrammarType {
+enum class GrammarType
+{
     LEFT_LINEAR,
     RIGHT_LINEAR,
     UNKNOWN
 };
 
-class GrammarToNFA {
+class GrammarToNFA
+{
 public:
-    void readGrammar(const std::string& filename) {
+    void readGrammar(const std::string& filename)
+    {
         std::ifstream file(filename);
-        if (!file.is_open()) {
+        if (!file.is_open())
+        {
             throw std::runtime_error("Failed to open file: " + filename);
         }
 
         std::string line;
-        while (std::getline(file, line)) {
-            processLine(line);
+        std::string accumLine;
+        while (std::getline(file, line))
+        {
+            accumLine += line;
+            if (line.back() != '|')
+            {
+                processLine(accumLine);
+                accumLine = "";
+            }
         }
 
-        if (grammarType == GrammarType::UNKNOWN) {
+        if (grammarType == GrammarType::UNKNOWN)
+        {
             throw std::runtime_error("Could not determine grammar type from rules.");
         }
     }
 
-    void convertToNFA(const std::string& outputFile) {
+    void convertToNFA(const std::string& outputFile)
+    {
         prepareStates();
         processTransitions();
         saveNFA(outputFile);
     }
 
-    void printGrammar() const {
+    void printGrammar() const
+    {
         std::cout << "Grammar:\n";
-        for (const auto& [nonTerminal, rules] : grammar) {
+        for (const auto& [nonTerminal, rules] : grammar)
+        {
             std::cout << "<" << nonTerminal << "> -> ";
             for (size_t i = 0; i < rules.size(); ++i) {
                 std::cout << rules[i] << (i < rules.size() - 1 ? " | " : "");
@@ -64,12 +79,15 @@ private:
     const std::regex leftLinearRegex = std::regex(R"(^\s*<(\w+)>\s*->\s*((?:<\w+>\s+)?(?:[\w]|ε)(?:\s*\|\s*(?:<\w+>\s+)?(?:[\w]|ε))*)\s*$)");
     const std::regex rightLinearRegex = std::regex(R"(^\s*<(\w+)>\s*->\s*((?:[\w]|ε)(?:\s+<\w+>)?(?:\s*\|\s*(?:[\w]|ε)(?:\s+<\w+>)?)*)\s*$)");
 
-    void processLine(const std::string& line) {
+    void processLine(const std::string& line)
+    {
         std::smatch match;
-        if (std::regex_match(line, match, leftLinearRegex)) {
+        if (std::regex_match(line, match, leftLinearRegex))
+        {
             if (grammarType == GrammarType::UNKNOWN) grammarType = GrammarType::LEFT_LINEAR;
             parseRule(match[1], match[2]);
-        } else if (std::regex_match(line, match, rightLinearRegex)) {
+        } else if (std::regex_match(line, match, rightLinearRegex))
+        {
             if (grammarType == GrammarType::UNKNOWN) grammarType = GrammarType::RIGHT_LINEAR;
             parseRule(match[1], match[2]);
         } else {
@@ -77,28 +95,35 @@ private:
         }
     }
 
-    void parseRule(const std::string& nonTerminal, const std::string& rules) {
-        if (std::find(nonTerminals.begin(), nonTerminals.end(), nonTerminal) == nonTerminals.end()) {
+    void parseRule(const std::string& nonTerminal, const std::string& rules)
+    {
+        if (std::find(nonTerminals.begin(), nonTerminals.end(), nonTerminal) == nonTerminals.end())
+        {
             nonTerminals.push_back(nonTerminal);
         }
 
         std::istringstream ruleStream(rules);
         std::string option;
-        while (std::getline(ruleStream, option, '|')) {
+        while (std::getline(ruleStream, option, '|'))
+        {
             grammar[nonTerminal].push_back(option);
 
-            for (const auto& symbol : splitString(option)) {
-                if (!symbol.empty() && !isNonTerminal(symbol) && std::find(terminals.begin(), terminals.end(), symbol) == terminals.end()) {
+            for (const auto& symbol : splitString(option))
+            {
+                if (!symbol.empty() && !isNonTerminal(symbol) && std::find(terminals.begin(), terminals.end(), symbol) == terminals.end())
+                {
                     terminals.push_back(symbol);
                 }
             }
         }
     }
 
-    void prepareStates() {
+    void prepareStates()
+    {
         states.clear();
         transitions.assign(terminals.size(), std::vector<std::string>(nonTerminals.size() + 1, ""));
-        for (size_t i = 0; i <= nonTerminals.size(); ++i) {
+        for (size_t i = 0; i <= nonTerminals.size(); ++i)
+        {
             states.push_back("q" + std::to_string(i));
         }
         (grammarType == GrammarType::RIGHT_LINEAR)
@@ -106,63 +131,74 @@ private:
             : finalStates = "q0";
     }
 
-    void processTransitions() {
-        for(const auto& n: nonTerminals)
+    void processTransitions()
+    {
+        for (size_t i = 0; i < nonTerminals.size(); ++i)
         {
-            std::cout << n << std::endl;
-        }
-        for (size_t i = 0; i < nonTerminals.size(); ++i) {
             const auto& nonTerminal = nonTerminals[i];
             const auto& rules = grammar[nonTerminal];
 
-            for (const auto& rule : rules) {
+            for (const auto& rule : rules)
+            {
                 const auto& parts = splitString(rule);
                 std::string symbol = parts[0];
                 std::string nextState = (parts.size() > 1 ? parts[1] : "");
 
-
                 size_t terminalIndex = findIndex(terminals, symbol);
                 size_t stateIndex = findIndex(nonTerminals, nextState);
 
-                if (terminalIndex < terminals.size() && stateIndex < states.size()) {
+                if (terminalIndex < terminals.size() && stateIndex < states.size())
+                {
                     addTransition(terminalIndex, i, "q" + std::to_string(stateIndex));
-                } else if (terminalIndex < terminals.size()) {
+                }
+                else if (terminalIndex < terminals.size())
+                {
                     addTransition(terminalIndex, i, "q" + std::to_string(nonTerminals.size()));
                 }
             }
         }
     }
 
-    void addTransition(size_t terminalIndex, size_t stateIndex, const std::string& targetState) {
-        if (transitions[terminalIndex][stateIndex].empty()) {
+    void addTransition(size_t terminalIndex, size_t stateIndex, const std::string& targetState)
+    {
+        if (transitions[terminalIndex][stateIndex].empty())
+        {
             transitions[terminalIndex][stateIndex] = targetState;
-        } else {
+        }
+        else
+        {
             transitions[terminalIndex][stateIndex] += "," + targetState;
         }
     }
 
-    void saveNFA(const std::string& outputFile) const {
+    void saveNFA(const std::string& outputFile) const
+    {
         std::ofstream file(outputFile);
-        if (!file.is_open()) {
+        if (!file.is_open())
+        {
             throw std::runtime_error("Failed to open file: " + outputFile);
         }
 
         // Печать выходных символов
-        for (const auto& state : states) {
+        for (const auto& state : states)
+        {
             file << ((state == finalStates) ? ";F": ";");
         }
         file << std::endl;
 
         // Печать состояний
-        for (const auto& state : states) {
+        for (const auto& state : states)
+        {
             file << ";" << state;
         }
         file << std::endl;
 
         // Печать переходов
-        for (size_t i = 0; i < terminals.size(); ++i) {
+        for (size_t i = 0; i < terminals.size(); ++i)
+        {
             file << terminals[i];
-            for (const auto& transition : transitions[i]) {
+            for (const auto& transition : transitions[i])
+            {
                 file << ";" << (transition.empty() ? "" : transition);
             }
             file << std::endl;;
@@ -171,16 +207,20 @@ private:
         file.close();
     }
 
-    static bool isNonTerminal(const std::string& symbol) {
+    static bool isNonTerminal(const std::string& symbol)
+    {
         return !symbol.empty() && symbol.front() == '<' && symbol.back() == '>';
     }
 
-    static std::vector<std::string> splitString(const std::string& str) {
+    static std::vector<std::string> splitString(const std::string& str)
+    {
         std::istringstream stream(str);
-        return {std::istream_iterator<std::string>{stream}, std::istream_iterator<std::string>{}};
+        return {std::istream_iterator<std::string>{stream}, std::istream_iterator<std::string>{}
+        };
     }
 
-    static size_t findIndex(const std::vector<std::string>& vec, const std::string& value) {
+    static size_t findIndex(const std::vector<std::string>& vec, const std::string& value)
+    {
         auto it = std::find(vec.begin(), vec.end(), value);
         return it != vec.end() ? std::distance(vec.begin(), it) : vec.size();
     }
