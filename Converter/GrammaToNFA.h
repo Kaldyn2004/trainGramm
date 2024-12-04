@@ -90,7 +90,8 @@ private:
         {
             if (grammarType == GrammarType::UNKNOWN || grammarType == GrammarType::DUAL_LINEAR)
             {
-                if (std::regex_match(line, match, leftLinearRegex))
+                std::smatch matchSecond;
+                if (std::regex_match(line, matchSecond, leftLinearRegex))
                 {
                     grammarType = GrammarType::DUAL_LINEAR;
                 }
